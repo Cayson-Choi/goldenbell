@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import QuizCard from "@/components/QuizCard";
 import Link from "next/link";
 
@@ -23,27 +24,45 @@ interface DailyData {
   completedDays?: number;
   totalQuestions: number;
   solvedCount: number;
+  isReview?: boolean;
   questions: Question[];
 }
 
 export default function DailyQuizPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-4xl animate-float">⭐</div>
+      </div>
+    }>
+      <DailyQuizContent />
+    </Suspense>
+  );
+}
+
+function DailyQuizContent() {
   const [data, setData] = useState<DailyData | null>(null);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [loading, setLoading] = useState(true);
+  const searchParams = useSearchParams();
+
+  const fetchDaily = (dayParam?: string | null) => {
+    const url = dayParam ? `/api/daily?day=${dayParam}` : "/api/daily";
+    return fetch(url).then((r) => r.json());
+  };
 
   useEffect(() => {
-    fetch("/api/daily")
-      .then((r) => r.json())
-      .then((d) => {
-        setData(d);
-        // 아직 안 푼 첫 번째 문제로 이동
-        if (d.questions) {
-          const firstUnsolved = d.questions.findIndex((q: Question) => !q.solved);
-          if (firstUnsolved >= 0) setCurrentIdx(firstUnsolved);
-        }
-        setLoading(false);
-      });
-  }, []);
+    const dayParam = searchParams.get("day");
+    fetchDaily(dayParam).then((d) => {
+      setData(d);
+      if (d.questions) {
+        const firstUnsolved = d.questions.findIndex((q: Question) => !q.solved);
+        if (firstUnsolved >= 0) setCurrentIdx(firstUnsolved);
+        else setCurrentIdx(0);
+      }
+      setLoading(false);
+    });
+  }, [searchParams]);
 
   const handleAnswer = async (questionId: number, userAnswer: string) => {
     const res = await fetch("/api/attempt", {
@@ -55,7 +74,6 @@ export default function DailyQuizPage() {
   };
 
   const handleDayComplete = () => {
-    // Day 완료 → 데이터 리프레시 (다음 Day or 완료 화면)
     setLoading(true);
     fetch("/api/daily")
       .then((r) => r.json())
@@ -97,12 +115,20 @@ export default function DailyQuizPage() {
           축하해요! 모든 문제를 다 풀었어요!
         </p>
         <p className="text-slate-400 mt-2">24일 학습을 모두 완료했습니다!</p>
-        <Link
-          href="/"
-          className="mt-6 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold py-3 px-8 rounded-xl text-lg transition-colors inline-block"
-        >
-          홈으로 돌아가기
-        </Link>
+        <div className="flex gap-3 justify-center mt-6">
+          <Link
+            href="/quiz/daily/select"
+            className="bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold py-3 px-6 rounded-xl transition-colors inline-block"
+          >
+            📅 Day 선택
+          </Link>
+          <Link
+            href="/"
+            className="bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold py-3 px-6 rounded-xl transition-colors inline-block"
+          >
+            홈으로
+          </Link>
+        </div>
       </div>
     );
   }
@@ -120,41 +146,39 @@ export default function DailyQuizPage() {
           {data.totalQuestions}문제를 모두 풀었어요! 대단해요! 👏
         </p>
         <div className="mt-4 text-sm text-slate-400">
-          전체 진행: {(data.completedDays || 0) + 1} / {data.totalDays}일 완료
+          전체 진행: {(data.completedDays || 0) + (data.isReview ? 0 : 1)} / {data.totalDays}일 완료
         </div>
         <div className="w-full max-w-xs mx-auto bg-slate-700 rounded-full h-3 mt-3">
           <div
             className="bg-amber-400 h-3 rounded-full transition-all"
-            style={{ width: `${(((data.completedDays || 0) + 1) / data.totalDays) * 100}%` }}
+            style={{ width: `${(((data.completedDays || 0) + (data.isReview ? 0 : 1)) / data.totalDays) * 100}%` }}
           />
         </div>
-        {data.dayNumber < data.totalDays ? (
-          <button
-            onClick={() => {
-              setLoading(true);
-              fetch("/api/daily")
-                .then((r) => r.json())
-                .then((d) => {
+
+        <div className="flex flex-col gap-3 mt-8 items-center">
+          {data.dayNumber < data.totalDays && !data.isReview && (
+            <button
+              onClick={() => {
+                setLoading(true);
+                fetchDaily(null).then((d) => {
                   setData(d);
                   setCurrentIdx(0);
                   setLoading(false);
                 });
-            }}
-            className="mt-8 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-900 font-bold py-4 px-10 rounded-xl text-lg transition-all shadow-lg shadow-amber-500/30 inline-block"
-          >
-            🚀 Day {data.dayNumber + 1} 시작하기!
-          </button>
-        ) : (
+              }}
+              className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-900 font-bold py-4 px-10 rounded-xl text-lg transition-all shadow-lg shadow-amber-500/30"
+            >
+              🚀 Day {data.dayNumber + 1} 시작하기!
+            </button>
+          )}
           <Link
-            href="/"
-            className="mt-8 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold py-3 px-8 rounded-xl text-lg transition-colors inline-block"
+            href="/quiz/daily/select"
+            className="bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold py-3 px-8 rounded-xl transition-colors"
           >
-            홈으로 돌아가기
+            📅 Day 선택하기
           </Link>
-        )}
-        <div className="mt-4">
           <Link href="/" className="text-slate-400 hover:text-slate-300 text-sm underline">
-            나중에 하기 → 홈으로
+            홈으로
           </Link>
         </div>
       </div>
@@ -181,9 +205,18 @@ export default function DailyQuizPage() {
   return (
     <div>
       <div className="text-center mb-6">
-        <h1 className="text-xl font-bold text-amber-400">
-          Day {data.dayNumber} / {data.totalDays} 오늘의 퀴즈
-        </h1>
+        <div className="flex items-center justify-center gap-3">
+          <h1 className="text-xl font-bold text-amber-400">
+            Day {data.dayNumber} / {data.totalDays}
+            {data.isReview && " (복습)"}
+          </h1>
+          <Link
+            href="/quiz/daily/select"
+            className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-400 px-2.5 py-1 rounded-lg transition-colors"
+          >
+            📅 Day 선택
+          </Link>
+        </div>
         {(data.completedDays || 0) > 0 && (
           <p className="text-slate-400 text-sm mt-1">
             ✅ {data.completedDays}일 완료

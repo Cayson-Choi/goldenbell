@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "인증이 필요합니다" }, { status: 401 });
@@ -16,8 +16,7 @@ export async function GET() {
     return NextResponse.json({ started: false, questions: [], dayNumber: 0, totalDays: 24 });
   }
 
-  // 진행도 기반: 첫 번째 미완료 Day를 찾기
-  // 각 Day별 풀이 현황 조회
+  // 모든 Day의 풀이 현황 조회
   const allDayQuestions = await prisma.dailyPlanQuestion.findMany({
     where: { userId: session.userId },
     select: { dayNumber: true, solved: true },
@@ -33,21 +32,50 @@ export async function GET() {
     if (dq.solved) dayStats[dq.dayNumber].solved++;
   }
 
-  // 첫 번째 미완료 Day 찾기 (1~24)
-  let dayNumber = 0;
+  // 완료된 Day 수 계산
   let completedDays = 0;
+  let firstIncompleteDay = 0;
   for (let d = 1; d <= 24; d++) {
     const ds = dayStats[d];
     if (ds && ds.solved >= ds.total) {
       completedDays++;
-    } else {
-      dayNumber = d;
-      break;
+    } else if (firstIncompleteDay === 0) {
+      firstIncompleteDay = d;
     }
   }
 
-  // 모든 Day 완료
-  if (dayNumber === 0) {
+  const { searchParams } = new URL(request.url);
+
+  // ?list=true → Day 목록 반환
+  if (searchParams.get("list") === "true") {
+    const dayList = [];
+    for (let d = 1; d <= 24; d++) {
+      const ds = dayStats[d];
+      if (!ds) {
+        dayList.push({ dayNumber: d, total: 0, solved: 0, status: "empty" });
+      } else if (ds.solved >= ds.total) {
+        dayList.push({ dayNumber: d, total: ds.total, solved: ds.solved, status: "completed" });
+      } else if (ds.solved > 0) {
+        dayList.push({ dayNumber: d, total: ds.total, solved: ds.solved, status: "in_progress" });
+      } else {
+        dayList.push({ dayNumber: d, total: ds.total, solved: 0, status: "pending" });
+      }
+    }
+    return NextResponse.json({
+      started: true,
+      completedDays,
+      totalDays: 24,
+      currentDay: firstIncompleteDay || 25,
+      days: dayList,
+    });
+  }
+
+  // ?day=N → 특정 Day 조회
+  const requestedDay = searchParams.get("day");
+  const dayNumber = requestedDay ? parseInt(requestedDay, 10) : (firstIncompleteDay || 0);
+
+  // 모든 Day 완료 (특정 Day 요청 없을 때)
+  if (dayNumber === 0 && !requestedDay) {
     return NextResponse.json({
       started: true,
       completed: true,
@@ -55,6 +83,10 @@ export async function GET() {
       totalDays: 24,
       completedDays: 24,
     });
+  }
+
+  if (dayNumber < 1 || dayNumber > 24) {
+    return NextResponse.json({ error: "잘못된 Day 번호입니다" }, { status: 400 });
   }
 
   const dailyQuestions = await prisma.dailyPlanQuestion.findMany({
@@ -76,6 +108,7 @@ export async function GET() {
   });
 
   const solved = dailyQuestions.filter((dq) => dq.solved).length;
+  const isReview = !!(requestedDay && dayStats[dayNumber] && dayStats[dayNumber].solved >= dayStats[dayNumber].total);
 
   return NextResponse.json({
     started: true,
@@ -84,6 +117,7 @@ export async function GET() {
     completedDays,
     totalQuestions: dailyQuestions.length,
     solvedCount: solved,
+    isReview,
     questions: dailyQuestions.map((dq) => ({
       ...dq.question,
       solved: dq.solved,
@@ -109,7 +143,7 @@ export async function POST() {
   // 모든 문제를 난이도순으로 가져오기
   const allQuestions = await prisma.question.findMany({
     orderBy: [
-      { difficulty: "asc" }, // 하, 상, 중, 최상 (알파벳순이 아닌 커스텀 순서 필요)
+      { difficulty: "asc" },
       { course: "asc" },
       { month: "asc" },
       { questionNumber: "asc" },
@@ -158,4 +192,27 @@ export async function POST() {
   });
 
   return NextResponse.json({ success: true, startDate: today });
+}
+
+// PATCH: Day 다시 풀기 (solved 리셋)
+export async function PATCH(request: NextRequest) {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "인증이 필요합니다" }, { status: 401 });
+  }
+
+  const body = await request.json();
+  const dayNumber = body.dayNumber;
+
+  if (!dayNumber || dayNumber < 1 || dayNumber > 24) {
+    return NextResponse.json({ error: "잘못된 Day 번호입니다" }, { status: 400 });
+  }
+
+  // 해당 Day의 모든 문제 solved를 false로 리셋
+  await prisma.dailyPlanQuestion.updateMany({
+    where: { dayNumber, userId: session.userId },
+    data: { solved: false },
+  });
+
+  return NextResponse.json({ success: true, dayNumber });
 }

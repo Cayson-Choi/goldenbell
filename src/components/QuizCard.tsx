@@ -253,6 +253,14 @@ export default function QuizCard({
             autoComplete="off"
           />
           <div className="flex gap-3">
+            {hasPrev && (
+              <button
+                onClick={onPrev}
+                className="px-5 bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium py-3.5 rounded-xl transition-colors"
+              >
+                ←
+              </button>
+            )}
             <button
               onClick={handleSubmit}
               disabled={!userAnswer.trim() || isSubmitting}
@@ -274,9 +282,9 @@ export default function QuizCard({
           {hasPrev && (
             <button
               onClick={onPrev}
-              className="px-6 bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium py-3.5 rounded-xl transition-colors"
+              className="px-5 bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium py-3.5 rounded-xl transition-colors"
             >
-              ← 이전
+              ←
             </button>
           )}
           {hasNext ? (

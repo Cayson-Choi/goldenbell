@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Question {
+  id             Int       @id @default(autoincrement())
+  course         String    // "체험" | "탐구"
+  month          Int       // 1~12
+  topic          String
+  difficulty     String    // "하" | "중" | "상" | "최상"
+  questionNumber Int
+  questionText   String
+  answer         String
+  attempts       Attempt[]
+  dailyQuestions DailyPlanQuestion[]
+
+  @@index([course, month])
+  @@index([difficulty])
+}
+
+model Attempt {
+  id         Int      @id @default(autoincrement())
+  questionId Int
+  question   Question @relation(fields: [questionId], references: [id])
+  userAnswer String
+  isCorrect  Boolean
+  points     Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([questionId])
+  @@index([isCorrect])
+}
+
+model DailyPlan {
+  id        Int      @id @default(autoincrement())
+  dayNumber Int      @unique
+  date      DateTime
+  completed Boolean  @default(false)
+  questions DailyPlanQuestion[]
+}
+
+model DailyPlanQuestion {
+  id         Int       @id @default(autoincrement())
+  dayNumber  Int
+  questionId Int
+  solved     Boolean   @default(false)
+  dailyPlan  DailyPlan @relation(fields: [dayNumber], references: [dayNumber])
+  question   Question  @relation(fields: [questionId], references: [id])
+
+  @@unique([dayNumber, questionId])
+  @@index([dayNumber])
+}
+
+model Badge {
+  id       Int       @id @default(autoincrement())
+  badgeKey String    @unique
+  name     String
+  description String @default("")
+  earnedAt DateTime?
+}
+
+model UserStats {
+  id              Int       @id @default(1)
+  totalPoints     Int       @default(0)
+  currentCombo    Int       @default(0)
+  maxCombo        Int       @default(0)
+  consecutiveDays Int       @default(0)
+  lastStudyDate   DateTime?
+  planStartDate   DateTime?
+}

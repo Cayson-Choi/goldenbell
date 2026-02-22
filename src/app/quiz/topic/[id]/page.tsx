@@ -67,30 +67,44 @@ export default function TopicQuizPage() {
   const topicName = TOPICS[course]?.[month] || "";
 
   const [selectedDiff, setSelectedDiff] = useState<string | null>(null);
+  const [allQuestions, setAllQuestions] = useState<Question[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [diffCounts, setDiffCounts] = useState<Record<string, number>>({});
 
+  // 처음에 해당 주제의 전체 문제를 불러와서 난이도별 개수 계산
   useEffect(() => {
-    if (!selectedDiff) return;
-    setLoading(true);
-
-    // 전체: 모든 난이도, 개별: 특정 난이도만
-    const diffParam = selectedDiff === "전체" ? "" : `&difficulty=${encodeURIComponent(selectedDiff)}`;
-    fetch(`/api/questions?course=${encodeURIComponent(course)}&month=${month}${diffParam}`)
+    fetch(`/api/questions?course=${encodeURIComponent(course)}&month=${month}`)
       .then((r) => r.json())
       .then((data: Question[]) => {
-        // 난이도 순서로 정렬 (하 → 중 → 상 → 최상), 같은 난이도 내에서는 문제번호순
-        const sorted = data.sort((a, b) => {
-          const diffDiff = (DIFF_ORDER[a.difficulty] ?? 99) - (DIFF_ORDER[b.difficulty] ?? 99);
-          if (diffDiff !== 0) return diffDiff;
-          return a.questionNumber - b.questionNumber;
-        });
-        setQuestions(sorted);
-        setCurrentIdx(0);
+        setAllQuestions(data);
+        const counts: Record<string, number> = {};
+        for (const q of data) {
+          counts[q.difficulty] = (counts[q.difficulty] || 0) + 1;
+        }
+        setDiffCounts(counts);
         setLoading(false);
       });
-  }, [selectedDiff, course, month]);
+  }, [course, month]);
+
+  // 난이도 선택 시 필터링 & 정렬
+  useEffect(() => {
+    if (!selectedDiff || allQuestions.length === 0) return;
+
+    const filtered = selectedDiff === "전체"
+      ? [...allQuestions]
+      : allQuestions.filter((q) => q.difficulty === selectedDiff);
+
+    const sorted = filtered.sort((a, b) => {
+      const diffDiff = (DIFF_ORDER[a.difficulty] ?? 99) - (DIFF_ORDER[b.difficulty] ?? 99);
+      if (diffDiff !== 0) return diffDiff;
+      return a.questionNumber - b.questionNumber;
+    });
+
+    setQuestions(sorted);
+    setCurrentIdx(0);
+  }, [selectedDiff, allQuestions]);
 
   const handleAnswer = async (questionId: number, userAnswer: string) => {
     const res = await fetch("/api/attempt", {
@@ -103,6 +117,8 @@ export default function TopicQuizPage() {
 
   // 난이도 선택 화면
   if (!selectedDiff) {
+    const totalCount = allQuestions.length;
+
     return (
       <div className="space-y-6">
         <div className="text-center">
@@ -116,32 +132,46 @@ export default function TopicQuizPage() {
             {course}과정 · {month}월
           </h1>
           <p className="text-slate-300 mt-1">{topicName}</p>
+          {!loading && (
+            <p className="text-slate-500 text-sm mt-1">총 {totalCount}문제</p>
+          )}
         </div>
 
-        <p className="text-center text-slate-400 text-sm">난이도를 선택하세요</p>
-
-        <div className="space-y-3">
-          {["전체", "하", "중", "상", "최상"].map((diff) => (
-            <button
-              key={diff}
-              onClick={() => setSelectedDiff(diff)}
-              className={`w-full bg-gradient-to-r ${DIFF_COLORS[diff]} text-white font-bold py-4 px-6 rounded-xl text-lg transition-all shadow-lg flex items-center justify-between`}
-            >
-              <span>
-                {diff === "전체" ? "🌟 전체" : diff}
-              </span>
-              <span className="text-sm font-normal opacity-80">
-                {DIFF_LABELS[diff]}
-              </span>
-            </button>
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-10">
+            <div className="text-4xl animate-float">⭐</div>
+          </div>
+        ) : (
+          <>
+            <p className="text-center text-slate-400 text-sm">난이도를 선택하세요</p>
+            <div className="space-y-3">
+              {["전체", "하", "중", "상", "최상"].map((diff) => {
+                const count = diff === "전체" ? totalCount : (diffCounts[diff] || 0);
+                return (
+                  <button
+                    key={diff}
+                    onClick={() => count > 0 && setSelectedDiff(diff)}
+                    disabled={count === 0}
+                    className={`w-full bg-gradient-to-r ${DIFF_COLORS[diff]} text-white font-bold py-4 px-6 rounded-xl text-lg transition-all shadow-lg flex items-center justify-between disabled:opacity-40 disabled:cursor-not-allowed`}
+                  >
+                    <span>
+                      {diff === "전체" ? "🌟 전체" : diff}
+                    </span>
+                    <span className="text-sm font-normal opacity-90">
+                      {count}문제
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
     );
   }
 
-  // 로딩
-  if (loading) {
+  // 로딩 (난이도 선택 후)
+  if (questions.length === 0 && selectedDiff && loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-4xl animate-float">⭐</div>

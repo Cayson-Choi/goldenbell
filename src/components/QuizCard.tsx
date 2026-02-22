@@ -21,6 +21,7 @@ interface QuizCardProps {
   }>;
   onNext: () => void;
   onPrev: () => void;
+  onComplete?: () => void;
   hasNext: boolean;
   hasPrev: boolean;
 }
@@ -45,6 +46,7 @@ export default function QuizCard({
   onAnswer,
   onNext,
   onPrev,
+  onComplete,
   hasNext,
   hasPrev,
 }: QuizCardProps) {
@@ -219,7 +221,7 @@ export default function QuizCard({
             </button>
           ) : (
             <button
-              onClick={() => window.location.href = "/"}
+              onClick={() => onComplete ? onComplete() : (window.location.href = "/")}
               className="flex-1 bg-green-500 hover:bg-green-400 text-white font-bold py-3.5 rounded-xl text-lg transition-colors"
             >
               완료! 🎉

@@ -16,17 +16,45 @@ export async function GET() {
     return NextResponse.json({ started: false, questions: [], dayNumber: 0, totalDays: 24 });
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const planStart = new Date(stats.planStartDate);
-  planStart.setHours(0, 0, 0, 0);
+  // 진행도 기반: 첫 번째 미완료 Day를 찾기
+  // 각 Day별 풀이 현황 조회
+  const allDayQuestions = await prisma.dailyPlanQuestion.findMany({
+    where: { userId: session.userId },
+    select: { dayNumber: true, solved: true },
+  });
 
-  const dayNumber = Math.floor(
-    (today.getTime() - planStart.getTime()) / (1000 * 60 * 60 * 24)
-  ) + 1;
+  // Day별 완료 여부 계산
+  const dayStats: Record<number, { total: number; solved: number }> = {};
+  for (const dq of allDayQuestions) {
+    if (!dayStats[dq.dayNumber]) {
+      dayStats[dq.dayNumber] = { total: 0, solved: 0 };
+    }
+    dayStats[dq.dayNumber].total++;
+    if (dq.solved) dayStats[dq.dayNumber].solved++;
+  }
 
-  if (dayNumber > 24) {
-    return NextResponse.json({ started: true, completed: true, dayNumber: 24, totalDays: 24 });
+  // 첫 번째 미완료 Day 찾기 (1~24)
+  let dayNumber = 0;
+  let completedDays = 0;
+  for (let d = 1; d <= 24; d++) {
+    const ds = dayStats[d];
+    if (ds && ds.solved >= ds.total) {
+      completedDays++;
+    } else {
+      dayNumber = d;
+      break;
+    }
+  }
+
+  // 모든 Day 완료
+  if (dayNumber === 0) {
+    return NextResponse.json({
+      started: true,
+      completed: true,
+      dayNumber: 24,
+      totalDays: 24,
+      completedDays: 24,
+    });
   }
 
   const dailyQuestions = await prisma.dailyPlanQuestion.findMany({
@@ -53,6 +81,7 @@ export async function GET() {
     started: true,
     dayNumber,
     totalDays: 24,
+    completedDays,
     totalQuestions: dailyQuestions.length,
     solvedCount: solved,
     questions: dailyQuestions.map((dq) => ({

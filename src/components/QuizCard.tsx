@@ -101,6 +101,7 @@ export default function QuizCard({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          questionId,
           questionText,
           answer: result?.correctAnswer || "",
           userAnswer: userAnswer.trim(),

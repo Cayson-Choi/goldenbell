@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +10,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "인증이 필요합니다" }, { status: 401 });
   }
 
-  const { questionText, answer, userAnswer, isCorrect, course, month, topic, difficulty } = await request.json();
+  const { questionId, questionText, answer, userAnswer, isCorrect, course, month, topic, difficulty } = await request.json();
 
   if (!questionText || !answer) {
     return NextResponse.json({ error: "문제와 정답이 필요합니다" }, { status: 400 });
@@ -22,29 +23,52 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "API 키가 설정되지 않았습니다" }, { status: 500 });
   }
 
-  const systemPrompt = `너는 초등학생에게 천문학을 가르치는 정확하고 친절한 선생님이야.
+  // 같은 주제(과정+월)의 다른 문제들 가져오기
+  const sameTopicQuestions = await prisma.question.findMany({
+    where: {
+      course: course || undefined,
+      month: month ? Number(month) : undefined,
+      id: { not: questionId || 0 },
+    },
+    select: {
+      questionNumber: true,
+      difficulty: true,
+      questionText: true,
+      answer: true,
+    },
+    orderBy: [{ difficulty: "asc" }, { questionNumber: "asc" }],
+  });
+
+  // 관련 문제 목록을 텍스트로 변환
+  const relatedQuestionsText = sameTopicQuestions
+    .map((q) => `[${q.difficulty} ${q.questionNumber}번] ${q.questionText} → 정답: ${q.answer}`)
+    .join("\n");
+
+  const systemPrompt = `너는 초등학생에게 천문학 퀴즈를 도와주는 선생님이야.
 
 절대 규칙:
-- 확실한 사실만 말해. 추측하거나 지어내지 마.
-- 정답("${answer}")이 왜 맞는지를 중심으로 설명해.
-- 숫자, 이름, 단위 등 구체적인 정보는 확실한 것만 언급해.
-- 만약 이 문제에 대해 정확한 배경지식이 부족하면 "이 부분은 선생님이나 책에서 더 확인해보자!"라고 솔직하게 말해.
-- 절대로 거짓 정보를 만들어내지 마.`;
+- 아래 제공된 [관련 문제 목록]에 있는 정보만 사용해서 해설해.
+- 문제 목록에 없는 외부 지식은 절대 추가하지 마.
+- 지어내거나 추측하지 마.
+- 제공된 문제들 중에서 지금 문제와 헷갈릴 수 있는 문제가 있으면 비교해서 알려줘.
+- 초등학교 4학년이 이해할 수 있게 쉽게 말해줘.`;
 
-  const userPrompt = `[문제 정보]
+  const userPrompt = `[지금 푼 문제]
 과정: ${course || ""}과정 / ${month || ""}월 / 주제: ${topic || ""} / 난이도: ${difficulty || ""}
-
 문제: ${questionText}
 정답: ${answer}
 ${userAnswer ? `학생의 답: ${userAnswer}` : "학생이 답을 못 적었어요."}
-${isCorrect ? "학생이 정답을 맞혔어요!" : "학생이 틀렸어요."}
+${isCorrect ? "→ 정답을 맞혔어요!" : "→ 틀렸어요."}
 
-다음 형식으로 답해줘:
-- 초등학교 4학년이 이해할 수 있게 쉽게 설명
-- 왜 "${answer}"이(가) 정답인지 설명
-- 확실한 관련 사실 1개 (불확실하면 생략)
-- 3~5문장으로 간결하게
-- 한국어로 답해줘`;
+[같은 주제의 다른 문제들]
+${relatedQuestionsText}
+
+위 정보만을 바탕으로 해설해줘:
+1. 정답이 "${answer}"인 이유를 간단히 설명 (위 문제 목록 내용 기반으로만)
+2. 위 문제 목록 중 이 문제와 헷갈릴 수 있는 비슷한 문제가 있다면 "⚠️ 헷갈리지 마세요!" 로 비교 정리
+3. 헷갈릴 문제가 없으면 2번은 생략
+4. 간결하게 (3~5문장)
+5. 한국어로`;
 
   try {
     const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -59,8 +83,8 @@ ${isCorrect ? "학생이 정답을 맞혔어요!" : "학생이 틀렸어요."}
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        max_tokens: 500,
-        temperature: 0.2,
+        max_tokens: 600,
+        temperature: 0.1,
       }),
     });
 

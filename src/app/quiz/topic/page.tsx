@@ -29,7 +29,7 @@ const TOPICS = {
     { month: 9, name: "소행성, 왜행성" },
     { month: 10, name: "망원경" },
     { month: 11, name: "성운, 성단, 은하" },
-    { month: 12, name: "은하 분류와 우주론" },
+    { month: 12, name: "외부은하" },
   ],
 };
 

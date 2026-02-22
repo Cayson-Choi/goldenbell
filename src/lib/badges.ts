@@ -5,14 +5,14 @@ interface BadgeCheck {
   check: () => Promise<boolean>;
 }
 
-export async function checkAndAwardBadges(): Promise<string[]> {
+export async function checkAndAwardBadges(userId: number): Promise<string[]> {
   const earned: string[] = [];
 
-  const stats = await prisma.userStats.findUnique({ where: { id: 1 } });
+  const stats = await prisma.userStats.findUnique({ where: { userId } });
   if (!stats) return earned;
 
-  const totalAttempts = await prisma.attempt.count();
-  const correctAttempts = await prisma.attempt.count({ where: { isCorrect: true } });
+  const totalAttempts = await prisma.attempt.count({ where: { userId } });
+  const correctAttempts = await prisma.attempt.count({ where: { userId, isCorrect: true } });
 
   const checks: BadgeCheck[] = [
     {
@@ -33,7 +33,7 @@ export async function checkAndAwardBadges(): Promise<string[]> {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const todayAttempts = await prisma.attempt.count({
-          where: { createdAt: { gte: today } },
+          where: { userId, createdAt: { gte: today } },
         });
         return todayAttempts >= 50;
       },
@@ -47,7 +47,7 @@ export async function checkAndAwardBadges(): Promise<string[]> {
       check: async () => {
         const uniqueSolved = await prisma.attempt.groupBy({
           by: ["questionId"],
-          where: { isCorrect: true },
+          where: { userId, isCorrect: true },
         });
         return uniqueSolved.length >= 1199;
       },
@@ -80,7 +80,7 @@ export async function checkAndAwardBadges(): Promise<string[]> {
         const qIds = questions.map((q) => q.id);
         const solved = await prisma.attempt.groupBy({
           by: ["questionId"],
-          where: { questionId: { in: qIds }, isCorrect: true },
+          where: { userId, questionId: { in: qIds }, isCorrect: true },
         });
         return solved.length >= val.count;
       },
@@ -88,12 +88,12 @@ export async function checkAndAwardBadges(): Promise<string[]> {
   }
 
   for (const { badgeKey, check } of checks) {
-    const badge = await prisma.badge.findUnique({ where: { badgeKey } });
+    const badge = await prisma.userBadge.findFirst({ where: { userId, badgeKey } });
     if (badge && !badge.earnedAt) {
       const passed = await check();
       if (passed) {
-        await prisma.badge.update({
-          where: { badgeKey },
+        await prisma.userBadge.update({
+          where: { id: badge.id },
           data: { earnedAt: new Date() },
         });
         earned.push(badge.name);

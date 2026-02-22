@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getSession } from "@/lib/auth";
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "인증이 필요합니다" }, { status: 401 });
+  }
+
   // 틀린 문제 중 아직 정답을 못 맞춘 문제
   // 1. 모든 오답 기록이 있는 문제 찾기
   // 2. 그 중 나중에 정답을 맞추지 못한 문제만 필터
@@ -12,15 +18,18 @@ export async function GET() {
     SELECT a."questionId", COUNT(*) as "wrongCount"
     FROM "Attempt" a
     WHERE a."isCorrect" = false
+    AND a."userId" = ${session.userId}
     AND a."questionId" NOT IN (
       SELECT DISTINCT a2."questionId"
       FROM "Attempt" a2
       WHERE a2."isCorrect" = true
+      AND a2."userId" = ${session.userId}
       AND a2."createdAt" > (
         SELECT MAX(a3."createdAt")
         FROM "Attempt" a3
         WHERE a3."questionId" = a2."questionId"
         AND a3."isCorrect" = false
+        AND a3."userId" = ${session.userId}
       )
     )
     GROUP BY a."questionId"

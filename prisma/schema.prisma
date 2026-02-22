@@ -7,12 +7,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id           Int       @id @default(autoincrement())
+  name         String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  attempts     Attempt[]
+  dailyPlans   DailyPlan[]
+  dailyPlanQuestions DailyPlanQuestion[]
+  badges       UserBadge[]
+  stats        UserStats?
+}
+
 model Question {
   id             Int       @id @default(autoincrement())
-  course         String    // "체험" | "탐구"
-  month          Int       // 1~12
+  course         String
+  month          Int
   topic          String
-  difficulty     String    // "하" | "중" | "상" | "최상"
+  difficulty     String
   questionNumber Int
   questionText   String
   answer         String
@@ -25,51 +37,65 @@ model Question {
 
 model Attempt {
   id         Int      @id @default(autoincrement())
+  userId     Int
   questionId Int
+  user       User     @relation(fields: [userId], references: [id])
   question   Question @relation(fields: [questionId], references: [id])
   userAnswer String
   isCorrect  Boolean
   points     Int      @default(0)
   createdAt  DateTime @default(now())
 
-  @@index([questionId])
-  @@index([isCorrect])
+  @@index([userId, questionId])
+  @@index([userId, isCorrect])
 }
 
 model DailyPlan {
   id        Int      @id @default(autoincrement())
-  dayNumber Int      @unique
+  userId    Int
+  dayNumber Int
   date      DateTime
   completed Boolean  @default(false)
+  user      User     @relation(fields: [userId], references: [id])
   questions DailyPlanQuestion[]
+
+  @@unique([userId, dayNumber])
 }
 
 model DailyPlanQuestion {
   id         Int       @id @default(autoincrement())
+  userId     Int
   dayNumber  Int
   questionId Int
   solved     Boolean   @default(false)
-  dailyPlan  DailyPlan @relation(fields: [dayNumber], references: [dayNumber])
+  user       User      @relation(fields: [userId], references: [id])
+  dailyPlan  DailyPlan @relation(fields: [userId, dayNumber], references: [userId, dayNumber])
   question   Question  @relation(fields: [questionId], references: [id])
 
-  @@unique([dayNumber, questionId])
-  @@index([dayNumber])
+  @@unique([userId, dayNumber, questionId])
+  @@index([userId, dayNumber])
 }
 
-model Badge {
+model UserBadge {
   id       Int       @id @default(autoincrement())
-  badgeKey String    @unique
+  userId   Int
+  badgeKey String
   name     String
   description String @default("")
   earnedAt DateTime?
+  user     User      @relation(fields: [userId], references: [id])
+
+  @@unique([userId, badgeKey])
 }
 
 model UserStats {
-  id              Int       @id @default(1)
+  id              Int       @id @default(autoincrement())
+  userId          Int       @unique
   totalPoints     Int       @default(0)
   currentCombo    Int       @default(0)
   maxCombo        Int       @default(0)
   consecutiveDays Int       @default(0)
   lastStudyDate   DateTime?
   planStartDate   DateTime?
+  user            User      @relation(fields: [userId], references: [id])
 }

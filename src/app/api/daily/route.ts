@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getSession } from "@/lib/auth";
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const stats = await prisma.userStats.findUnique({ where: { id: 1 } });
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "인증이 필요합니다" }, { status: 401 });
+  }
+
+  const stats = await prisma.userStats.findUnique({ where: { userId: session.userId } });
 
   if (!stats?.planStartDate) {
     return NextResponse.json({ started: false, questions: [], dayNumber: 0, totalDays: 24 });
@@ -24,7 +30,7 @@ export async function GET() {
   }
 
   const dailyQuestions = await prisma.dailyPlanQuestion.findMany({
-    where: { dayNumber },
+    where: { dayNumber, userId: session.userId },
     include: {
       question: {
         select: {
@@ -57,8 +63,13 @@ export async function GET() {
 }
 
 export async function POST() {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "인증이 필요합니다" }, { status: 401 });
+  }
+
   // 24일 플랜 생성
-  const existing = await prisma.userStats.findUnique({ where: { id: 1 } });
+  const existing = await prisma.userStats.findUnique({ where: { userId: session.userId } });
   if (existing?.planStartDate) {
     return NextResponse.json({ error: "이미 플랜이 시작되었습니다" }, { status: 400 });
   }
@@ -93,7 +104,7 @@ export async function POST() {
     date.setDate(date.getDate() + day - 1);
 
     await prisma.dailyPlan.create({
-      data: { dayNumber: day, date },
+      data: { dayNumber: day, date, userId: session.userId },
     });
   }
 
@@ -106,13 +117,14 @@ export async function POST() {
       data: {
         dayNumber: dayNum,
         questionId: sorted[i].id,
+        userId: session.userId,
       },
     });
   }
 
   // planStartDate 설정
   await prisma.userStats.update({
-    where: { id: 1 },
+    where: { userId: session.userId },
     data: { planStartDate: today },
   });
 

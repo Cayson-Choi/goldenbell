@@ -17,6 +17,7 @@
     "@types/node": "^25.3.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "bcryptjs": "^3.0.3",
     "next": "^14.2.35",
     "postcss": "^8.5.6",
     "prisma": "^5.22.0",
@@ -27,6 +28,7 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "eslint": "^9.39.3",
     "eslint-config-next": "^16.1.6",
     "tsx": "^4.21.0"

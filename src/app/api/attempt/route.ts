@@ -2,10 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { gradeAnswer, getPoints } from "@/lib/grading";
 import { checkAndAwardBadges } from "@/lib/badges";
+import { getSession } from "@/lib/auth";
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "인증이 필요합니다" }, { status: 401 });
+  }
+
   const { questionId, userAnswer } = await req.json();
 
   const question = await prisma.question.findUnique({
@@ -20,7 +26,7 @@ export async function POST(req: NextRequest) {
 
   // 첫 시도인지 확인
   const prevAttempts = await prisma.attempt.count({
-    where: { questionId },
+    where: { questionId, userId: session.userId },
   });
   const isFirstAttempt = prevAttempts === 0;
 
@@ -30,6 +36,7 @@ export async function POST(req: NextRequest) {
   await prisma.attempt.create({
     data: {
       questionId,
+      userId: session.userId,
       userAnswer: userAnswer || "(건너뜀)",
       isCorrect,
       points,
@@ -37,7 +44,7 @@ export async function POST(req: NextRequest) {
   });
 
   // 사용자 통계 업데이트
-  const stats = await prisma.userStats.findUnique({ where: { id: 1 } });
+  const stats = await prisma.userStats.findUnique({ where: { userId: session.userId } });
   const newCombo = isCorrect ? (stats?.currentCombo || 0) + 1 : 0;
   const maxCombo = Math.max(newCombo, stats?.maxCombo || 0);
 
@@ -60,7 +67,7 @@ export async function POST(req: NextRequest) {
   }
 
   await prisma.userStats.upsert({
-    where: { id: 1 },
+    where: { userId: session.userId },
     update: {
       totalPoints: { increment: points },
       currentCombo: newCombo,
@@ -69,7 +76,7 @@ export async function POST(req: NextRequest) {
       lastStudyDate: new Date(),
     },
     create: {
-      id: 1,
+      userId: session.userId,
       totalPoints: points,
       currentCombo: newCombo,
       maxCombo,
@@ -86,13 +93,13 @@ export async function POST(req: NextRequest) {
         (1000 * 60 * 60 * 24)
     ) + 1;
     await prisma.dailyPlanQuestion.updateMany({
-      where: { dayNumber: dayNum, questionId },
+      where: { dayNumber: dayNum, questionId, userId: session.userId },
       data: { solved: true },
     });
   }
 
   // 뱃지 체크
-  const newBadges = await checkAndAwardBadges();
+  const newBadges = await checkAndAwardBadges(session.userId);
 
   // 콤보 보너스 포인트
   let comboBonus = 0;
@@ -103,7 +110,7 @@ export async function POST(req: NextRequest) {
 
   if (comboBonus > 0) {
     await prisma.userStats.update({
-      where: { id: 1 },
+      where: { userId: session.userId },
       data: { totalPoints: { increment: comboBonus } },
     });
   }

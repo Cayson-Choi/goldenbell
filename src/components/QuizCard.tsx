@@ -59,12 +59,16 @@ export default function QuizCard({
     newBadges: string[];
   } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [explanation, setExplanation] = useState<string | null>(null);
+  const [isExplaining, setIsExplaining] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // 문제 변경 시 초기화
   useEffect(() => {
     setUserAnswer("");
     setResult(null);
+    setExplanation(null);
+    setIsExplaining(false);
     inputRef.current?.focus();
   }, [questionId]);
 
@@ -86,6 +90,29 @@ export default function QuizCard({
       setResult(res);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleExplain = async () => {
+    if (isExplaining || explanation) return;
+    setIsExplaining(true);
+    try {
+      const res = await fetch("/api/explain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          questionText,
+          answer: result?.correctAnswer || "",
+          userAnswer: userAnswer.trim(),
+          isCorrect: result?.isCorrect || false,
+        }),
+      });
+      const data = await res.json();
+      setExplanation(data.explanation || data.error || "해설을 불러올 수 없습니다.");
+    } catch {
+      setExplanation("해설을 불러올 수 없습니다.");
+    } finally {
+      setIsExplaining(false);
     }
   };
 
@@ -132,7 +159,7 @@ export default function QuizCard({
       {/* 결과 표시 */}
       {result && (
         <div
-          className={`rounded-2xl p-5 mb-6 border ${
+          className={`rounded-2xl p-5 mb-4 border ${
             result.isCorrect
               ? "bg-green-900/30 border-green-500/50"
               : "bg-red-900/30 border-red-500/50"
@@ -166,6 +193,38 @@ export default function QuizCard({
                 정답: <span className="text-white font-bold">{result.correctAnswer}</span>
               </p>
               <p className="text-slate-400 text-sm mt-1">다음에 다시 도전해보자!</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* AI 해설 */}
+      {result && (
+        <div className="mb-6">
+          {!explanation && !isExplaining && (
+            <button
+              onClick={handleExplain}
+              className="w-full bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-300 font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+            >
+              <span>🤖</span>
+              <span>AI 해설 보기</span>
+            </button>
+          )}
+          {isExplaining && (
+            <div className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-4 text-center">
+              <div className="inline-block animate-spin text-xl mb-2">🤖</div>
+              <p className="text-purple-300 text-sm">AI가 해설을 작성하고 있어요...</p>
+            </div>
+          )}
+          {explanation && (
+            <div className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-4 animate-slide-up">
+              <div className="flex items-center gap-2 mb-2">
+                <span>🤖</span>
+                <span className="text-purple-300 font-bold text-sm">AI 해설</span>
+              </div>
+              <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-wrap">
+                {explanation}
+              </p>
             </div>
           )}
         </div>

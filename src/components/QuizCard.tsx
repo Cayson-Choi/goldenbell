@@ -113,7 +113,10 @@ export default function QuizCard({
         }),
       });
       const data = await res.json();
-      setExplanation(data.explanation || data.error || "해설을 불러올 수 없습니다.");
+      const text = (data.explanation || data.error || "해설을 불러올 수 없습니다.")
+        .replace(/\*\*/g, "")
+        .replace(/\*/g, "");
+      setExplanation(text);
     } catch {
       setExplanation("해설을 불러올 수 없습니다.");
     } finally {

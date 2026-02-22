@@ -45,7 +45,7 @@ export default function TopicPage() {
             {TOPICS[course].map((t) => (
               <Link
                 key={`${course}-${t.month}`}
-                href={`/quiz/topic/${course}-${t.month}`}
+                href={`/quiz/topic/${course === "체험" ? 1 : 2}-${t.month}`}
                 className="bg-slate-800/60 hover:bg-slate-700/60 border border-slate-700 rounded-xl p-3 transition-colors flex items-center gap-3"
               >
                 <span className="text-slate-400 text-sm font-mono w-8">{t.month}월</span>

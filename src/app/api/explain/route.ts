@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "인증이 필요합니다" }, { status: 401 });
   }
 
-  const { questionText, answer, userAnswer, isCorrect } = await request.json();
+  const { questionText, answer, userAnswer, isCorrect, course, month, topic, difficulty } = await request.json();
 
   if (!questionText || !answer) {
     return NextResponse.json({ error: "문제와 정답이 필요합니다" }, { status: 400 });
@@ -22,18 +22,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "API 키가 설정되지 않았습니다" }, { status: 500 });
   }
 
-  const prompt = `너는 초등학생에게 천문학을 가르치는 친절한 선생님이야. 아래 퀴즈 문제에 대해 해설을 해줘.
+  const systemPrompt = `너는 초등학생에게 천문학을 가르치는 정확하고 친절한 선생님이야.
+
+절대 규칙:
+- 확실한 사실만 말해. 추측하거나 지어내지 마.
+- 정답("${answer}")이 왜 맞는지를 중심으로 설명해.
+- 숫자, 이름, 단위 등 구체적인 정보는 확실한 것만 언급해.
+- 만약 이 문제에 대해 정확한 배경지식이 부족하면 "이 부분은 선생님이나 책에서 더 확인해보자!"라고 솔직하게 말해.
+- 절대로 거짓 정보를 만들어내지 마.`;
+
+  const userPrompt = `[문제 정보]
+과정: ${course || ""}과정 / ${month || ""}월 / 주제: ${topic || ""} / 난이도: ${difficulty || ""}
 
 문제: ${questionText}
 정답: ${answer}
 ${userAnswer ? `학생의 답: ${userAnswer}` : "학생이 답을 못 적었어요."}
 ${isCorrect ? "학생이 정답을 맞혔어요!" : "학생이 틀렸어요."}
 
-다음 규칙을 지켜줘:
-- 초등학교 4학년이 이해할 수 있게 쉽게 설명해줘
-- 왜 그 답이 정답인지 설명해줘
-- 관련된 재미있는 사실을 1개 알려줘
-- 3~5문장으로 간결하게 해줘
+다음 형식으로 답해줘:
+- 초등학교 4학년이 이해할 수 있게 쉽게 설명
+- 왜 "${answer}"이(가) 정답인지 설명
+- 확실한 관련 사실 1개 (불확실하면 생략)
+- 3~5문장으로 간결하게
 - 한국어로 답해줘`;
 
   try {
@@ -45,9 +55,12 @@ ${isCorrect ? "학생이 정답을 맞혔어요!" : "학생이 틀렸어요."}
       },
       body: JSON.stringify({
         model,
-        messages: [{ role: "user", content: prompt }],
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
         max_tokens: 500,
-        temperature: 0.7,
+        temperature: 0.2,
       }),
     });
 

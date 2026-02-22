@@ -105,6 +105,10 @@ export default function QuizCard({
           answer: result?.correctAnswer || "",
           userAnswer: userAnswer.trim(),
           isCorrect: result?.isCorrect || false,
+          course,
+          month,
+          topic,
+          difficulty,
         }),
       });
       const data = await res.json();

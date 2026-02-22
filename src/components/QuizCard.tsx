@@ -34,6 +34,7 @@ const DIFFICULTY_COLORS: Record<string, string> = {
 
 export default function QuizCard({
   questionId,
+  questionNumber,
   questionText,
   difficulty,
   topic,
@@ -99,19 +100,18 @@ export default function QuizCard({
 
   return (
     <div className="animate-slide-up">
-      {/* 헤더 */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <span className={`${DIFFICULTY_COLORS[difficulty]} text-white text-xs font-bold px-2 py-1 rounded-full`}>
-            {difficulty}
-          </span>
-          <span className="text-slate-400 text-sm">
-            {course}과정 · {month}월 · {topic}
-          </span>
-        </div>
-        <span className="text-slate-400 text-sm font-mono">
-          {currentIndex + 1} / {totalCount}
-        </span>
+      {/* 출처 태그 */}
+      <div className="bg-slate-700/50 rounded-lg px-3 py-2 mb-4 text-xs text-slate-300 flex flex-wrap items-center gap-1.5">
+        <span className="bg-indigo-500/30 text-indigo-300 px-2 py-0.5 rounded">{course}과정</span>
+        <span className="text-slate-500">·</span>
+        <span className="bg-slate-600/50 px-2 py-0.5 rounded">{month}월</span>
+        <span className="text-slate-500">·</span>
+        <span className="bg-slate-600/50 px-2 py-0.5 rounded">{topic}</span>
+        <span className="text-slate-500">·</span>
+        <span className={`${DIFFICULTY_COLORS[difficulty]} text-white px-2 py-0.5 rounded font-bold`}>{difficulty}</span>
+        <span className="text-slate-500">·</span>
+        <span className="bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded">{questionNumber}번</span>
+        <span className="ml-auto text-slate-400 font-mono">{currentIndex + 1} / {totalCount}</span>
       </div>
 
       {/* 진행 바 */}

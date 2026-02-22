@@ -186,23 +186,16 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* 퀵 액션 */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Day 선택 */}
+      {daily?.started && (
         <Link
           href="/quiz/daily/select"
-          className="bg-slate-800/60 hover:bg-slate-700/60 rounded-xl p-4 border border-slate-700 text-center transition-colors"
+          className="block bg-slate-800/60 hover:bg-slate-700/60 rounded-xl p-4 border border-slate-700 text-center transition-colors"
         >
           <span className="text-2xl">📅</span>
-          <p className="text-sm mt-1 text-slate-300">Day 선택</p>
+          <p className="text-sm mt-1 text-slate-300">Day 선택 · 다시 풀기</p>
         </Link>
-        <Link
-          href="/badges"
-          className="bg-slate-800/60 hover:bg-slate-700/60 rounded-xl p-4 border border-slate-700 text-center transition-colors"
-        >
-          <span className="text-2xl">🏆</span>
-          <p className="text-sm mt-1 text-slate-300">뱃지 모음</p>
-        </Link>
-      </div>
+      )}
     </div>
   );
 }

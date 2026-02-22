@@ -24,7 +24,7 @@ const TOPICS = {
     { month: 4, name: "별의 일생" },
     { month: 5, name: "달의 과학" },
     { month: 6, name: "행성" },
-    { month: 7, name: "지구과학" },
+    { month: 7, name: "지구의 운동과 별자리" },
     { month: 8, name: "혜성, 유성" },
     { month: 9, name: "소행성, 왜행성" },
     { month: 10, name: "망원경" },

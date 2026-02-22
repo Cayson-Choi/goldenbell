@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 import AuthGuard from "@/components/AuthGuard";
+import UserHeader from "@/components/UserHeader";
 
 export const metadata: Metadata = {
   title: "도전! 골든별 퀴즈",
@@ -17,6 +18,7 @@ export default function RootLayout({
     <html lang="ko">
       <body className="antialiased">
         <AuthGuard>
+          <UserHeader />
           <Navigation />
           <main className="max-w-4xl mx-auto px-4 pb-24 pt-4">
             {children}

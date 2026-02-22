@@ -32,7 +32,7 @@ const DIFF_COLORS: Record<string, string> = {
   "중": "from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400",
   "상": "from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400",
   "최상": "from-red-600 to-red-500 hover:from-red-500 hover:to-red-400",
-  "전체": "from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400",
+  "전체": "from-pink-600 to-pink-500 hover:from-pink-500 hover:to-pink-400",
 };
 
 const DIFF_LABELS: Record<string, string> = {

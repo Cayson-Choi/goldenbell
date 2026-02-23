@@ -224,38 +224,34 @@ export default function QuizCard({
             disabled={isSubmitting}
             autoComplete="off"
           />
-          {(hasPrev || hasNext) && (
-            <div className="flex gap-3">
-              {hasPrev && (
-                <button
-                  onClick={onPrev}
-                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium py-3 rounded-xl transition-colors"
-                >
-                  ←
-                </button>
-              )}
-              {hasNext && (
-                <button
-                  onClick={onNext}
-                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium py-3 rounded-xl transition-colors"
-                >
-                  →
-                </button>
-              )}
-            </div>
-          )}
-          <div className="flex gap-3">
+          <div className="flex gap-2">
+            {hasPrev && (
+              <button
+                onClick={onPrev}
+                className="shrink-0 w-10 bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium py-3.5 rounded-xl transition-colors"
+              >
+                ←
+              </button>
+            )}
+            {hasNext && (
+              <button
+                onClick={onNext}
+                className="shrink-0 w-10 bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium py-3.5 rounded-xl transition-colors"
+              >
+                →
+              </button>
+            )}
             <button
               onClick={handleSubmit}
               disabled={!userAnswer.trim() || isSubmitting}
-              className="flex-1 bg-amber-500 hover:bg-amber-400 disabled:bg-slate-600 disabled:text-slate-400 text-slate-900 font-bold py-3.5 rounded-xl text-lg transition-colors whitespace-nowrap"
+              className="flex-1 bg-amber-500 hover:bg-amber-400 disabled:bg-slate-600 disabled:text-slate-400 text-slate-900 font-bold py-3.5 rounded-xl text-base transition-colors whitespace-nowrap"
             >
               정답 확인
             </button>
             <button
               onClick={handleSkip}
               disabled={isSubmitting}
-              className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium py-3.5 rounded-xl transition-colors whitespace-nowrap"
+              className="shrink-0 bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium py-3.5 px-4 rounded-xl transition-colors whitespace-nowrap"
             >
               모르겠어요
             </button>

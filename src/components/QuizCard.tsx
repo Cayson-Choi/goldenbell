@@ -210,38 +210,6 @@ export default function QuizCard({
         </div>
       )}
 
-      {/* AI 해설 */}
-      {result && (
-        <div className="mb-6">
-          {!explanation && !isExplaining && (
-            <button
-              onClick={handleExplain}
-              className="w-full bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-300 font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
-            >
-              <span>🤖</span>
-              <span>AI 해설 보기</span>
-            </button>
-          )}
-          {isExplaining && (
-            <div className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-4 text-center">
-              <div className="inline-block animate-spin text-xl mb-2">🤖</div>
-              <p className="text-purple-300 text-sm">AI가 해설을 작성하고 있어요...</p>
-            </div>
-          )}
-          {explanation && (
-            <div className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-4 animate-slide-up">
-              <div className="flex items-center gap-2 mb-2">
-                <span>🤖</span>
-                <span className="text-purple-300 font-bold text-sm">AI 해설</span>
-              </div>
-              <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-wrap">
-                {explanation}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* 입력 영역 */}
       {!result ? (
         <div className="space-y-3">
@@ -256,6 +224,45 @@ export default function QuizCard({
             disabled={isSubmitting}
             autoComplete="off"
           />
+          {(hasPrev || hasNext) && (
+            <div className="flex gap-3">
+              {hasPrev && (
+                <button
+                  onClick={onPrev}
+                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium py-3 rounded-xl transition-colors"
+                >
+                  ←
+                </button>
+              )}
+              {hasNext && (
+                <button
+                  onClick={onNext}
+                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium py-3 rounded-xl transition-colors"
+                >
+                  →
+                </button>
+              )}
+            </div>
+          )}
+          <div className="flex gap-3">
+            <button
+              onClick={handleSubmit}
+              disabled={!userAnswer.trim() || isSubmitting}
+              className="flex-1 bg-amber-500 hover:bg-amber-400 disabled:bg-slate-600 disabled:text-slate-400 text-slate-900 font-bold py-3.5 rounded-xl text-lg transition-colors whitespace-nowrap"
+            >
+              정답 확인
+            </button>
+            <button
+              onClick={handleSkip}
+              disabled={isSubmitting}
+              className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium py-3.5 rounded-xl transition-colors whitespace-nowrap"
+            >
+              모르겠어요
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
           <div className="flex gap-3">
             {hasPrev && (
               <button
@@ -265,55 +272,52 @@ export default function QuizCard({
                 ←
               </button>
             )}
-            {hasNext && (
+            {hasNext ? (
               <button
                 onClick={onNext}
-                className="px-5 bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium py-3.5 rounded-xl transition-colors"
+                className="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold py-3.5 rounded-xl text-lg transition-colors"
               >
-                →
+                다음 문제 →
+              </button>
+            ) : (
+              <button
+                onClick={() => onComplete ? onComplete() : (window.location.href = "/")}
+                className="flex-1 bg-green-500 hover:bg-green-400 text-white font-bold py-3.5 rounded-xl text-lg transition-colors"
+              >
+                완료! 🎉
               </button>
             )}
-            <button
-              onClick={handleSubmit}
-              disabled={!userAnswer.trim() || isSubmitting}
-              className="flex-1 bg-amber-500 hover:bg-amber-400 disabled:bg-slate-600 disabled:text-slate-400 text-slate-900 font-bold py-3.5 rounded-xl text-lg transition-colors"
-            >
-              정답 확인
-            </button>
-            <button
-              onClick={handleSkip}
-              disabled={isSubmitting}
-              className="px-6 bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium py-3.5 rounded-xl transition-colors"
-            >
-              모르겠어요
-            </button>
           </div>
-        </div>
-      ) : (
-        <div className="flex gap-3">
-          {hasPrev && (
-            <button
-              onClick={onPrev}
-              className="px-5 bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium py-3.5 rounded-xl transition-colors"
-            >
-              ←
-            </button>
-          )}
-          {hasNext ? (
-            <button
-              onClick={onNext}
-              className="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold py-3.5 rounded-xl text-lg transition-colors"
-            >
-              다음 문제 →
-            </button>
-          ) : (
-            <button
-              onClick={() => onComplete ? onComplete() : (window.location.href = "/")}
-              className="flex-1 bg-green-500 hover:bg-green-400 text-white font-bold py-3.5 rounded-xl text-lg transition-colors"
-            >
-              완료! 🎉
-            </button>
-          )}
+
+          {/* AI 해설 */}
+          <div>
+            {!explanation && !isExplaining && (
+              <button
+                onClick={handleExplain}
+                className="w-full bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-300 font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+              >
+                <span>🤖</span>
+                <span>AI 해설 보기</span>
+              </button>
+            )}
+            {isExplaining && (
+              <div className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-4 text-center">
+                <div className="inline-block animate-spin text-xl mb-2">🤖</div>
+                <p className="text-purple-300 text-sm">AI가 해설을 작성하고 있어요...</p>
+              </div>
+            )}
+            {explanation && (
+              <div className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-4 animate-slide-up">
+                <div className="flex items-center gap-2 mb-2">
+                  <span>🤖</span>
+                  <span className="text-purple-300 font-bold text-sm">AI 해설</span>
+                </div>
+                <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-wrap">
+                  {explanation}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

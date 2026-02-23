@@ -265,6 +265,14 @@ export default function QuizCard({
                 ←
               </button>
             )}
+            {hasNext && (
+              <button
+                onClick={onNext}
+                className="px-5 bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium py-3.5 rounded-xl transition-colors"
+              >
+                →
+              </button>
+            )}
             <button
               onClick={handleSubmit}
               disabled={!userAnswer.trim() || isSubmitting}

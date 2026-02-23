@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { playCorrectSound, playWrongSound } from "@/lib/sounds";
 
 interface QuizCardProps {
   questionId: number;
@@ -78,6 +79,8 @@ export default function QuizCard({
     try {
       const res = await onAnswer(questionId, userAnswer.trim());
       setResult(res);
+      if (res.isCorrect) playCorrectSound();
+      else playWrongSound();
     } finally {
       setIsSubmitting(false);
     }
@@ -88,6 +91,7 @@ export default function QuizCard({
     try {
       const res = await onAnswer(questionId, "");
       setResult(res);
+      playWrongSound();
     } finally {
       setIsSubmitting(false);
     }

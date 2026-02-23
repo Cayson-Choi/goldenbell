@@ -9,30 +9,36 @@ function getAudioContext() {
   return audioCtx;
 }
 
-// 정답 사운드: 경쾌한 도→미→솔 세 음 팡파레
+// 정답 사운드: 딩동 벨 소리
 export function playCorrectSound() {
   try {
     const ctx = getAudioContext();
     const now = ctx.currentTime;
 
-    const notes = [
-      { freq: 523.25, start: 0,    end: 0.12 },  // 도 (C5)
-      { freq: 659.25, start: 0.08, end: 0.2  },  // 미 (E5)
-      { freq: 783.99, start: 0.16, end: 0.45 },  // 솔 (G5)
-    ];
+    // 벨 소리를 만들기 위해 기본음 + 배음을 겹침
+    const bell = (freq: number, start: number, duration: number) => {
+      const harmonics = [
+        { ratio: 1,    vol: 0.4  },  // 기본음
+        { ratio: 2,    vol: 0.15 },  // 2배음
+        { ratio: 3,    vol: 0.08 },  // 3배음
+        { ratio: 4.2,  vol: 0.05 },  // 비정수배음 (벨 특유의 울림)
+      ];
+      for (const h of harmonics) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq * h.ratio;
+        gain.gain.setValueAtTime(h.vol, now + start);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + start + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + start);
+        osc.stop(now + start + duration);
+      }
+    };
 
-    for (const note of notes) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "triangle";
-      osc.frequency.value = note.freq;
-      gain.gain.setValueAtTime(0.35, now + note.start);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + note.end);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now + note.start);
-      osc.stop(now + note.end);
-    }
+    bell(880, 0, 0.5);     // 딩 (A5 - 높은 음)
+    bell(660, 0.25, 0.6);  // 동 (E5 - 낮은 음)
   } catch {
     // 오디오 지원 안 되면 무시
   }

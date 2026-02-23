@@ -85,18 +85,11 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // DailyPlanQuestion solved 업데이트
-  const planStart = stats?.planStartDate;
-  if (planStart) {
-    const dayNum = Math.floor(
-      (today.getTime() - new Date(planStart).setHours(0, 0, 0, 0)) /
-        (1000 * 60 * 60 * 24)
-    ) + 1;
-    await prisma.dailyPlanQuestion.updateMany({
-      where: { dayNumber: dayNum, questionId, userId: session.userId },
-      data: { solved: true },
-    });
-  }
+  // DailyPlanQuestion solved 업데이트 (해당 문제가 속한 Day를 직접 찾아서 업데이트)
+  await prisma.dailyPlanQuestion.updateMany({
+    where: { questionId, userId: session.userId },
+    data: { solved: true },
+  });
 
   // 뱃지 체크
   const newBadges = await checkAndAwardBadges(session.userId);
